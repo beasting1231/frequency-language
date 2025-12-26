@@ -5,7 +5,6 @@ export function useTextToSpeech() {
   const [speaking, setSpeaking] = useState(null); // ID of currently speaking text
   const [loading, setLoading] = useState(null); // ID of currently loading text
   const audioRef = useRef(null);
-  const cacheRef = useRef(new Map()); // Cache audio URLs by text
 
   const speak = useCallback(async (text, id) => {
     // If clicking the same item that's speaking, stop it
@@ -25,15 +24,10 @@ export function useTextToSpeech() {
     }
 
     try {
-      let audioUrl = cacheRef.current.get(text);
-
-      // Generate audio if not cached
-      if (!audioUrl) {
-        setLoading(id);
-        audioUrl = await generateSpeech(text);
-        cacheRef.current.set(text, audioUrl);
-        setLoading(null);
-      }
+      setLoading(id);
+      // Get audio URL (from Firebase Storage cache or generate new)
+      const audioUrl = await generateSpeech(text);
+      setLoading(null);
 
       // Create and play audio
       const audio = new Audio(audioUrl);
