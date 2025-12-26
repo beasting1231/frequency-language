@@ -281,13 +281,13 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
                       <span className="text-muted-foreground">{word.romaji}</span>
                       <button
                         onClick={(e) => handleSpeak(e, word.japanese, `word-${word.id}`)}
-                        className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                        className={`p-2 rounded-full hover:bg-accent transition-colors ${isSpeaking(`word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
                         disabled={isTTSLoading(`word-${word.id}`)}
                       >
                         {isTTSLoading(`word-${word.id}`) ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-5 w-5 animate-spin" />
                         ) : (
-                          <Volume2 className="h-4 w-4" />
+                          <Volume2 className="h-5 w-5" />
                         )}
                       </button>
                     </div>
@@ -329,13 +329,13 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
                                 <p className="font-medium flex-1">{phrase.japanese}</p>
                                 <button
                                   onClick={(e) => handleSpeak(e, phrase.japanese, `phrase-${word.id}-${i}`)}
-                                  className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`phrase-${word.id}-${i}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                                  className={`p-2 rounded-full hover:bg-accent transition-colors ${isSpeaking(`phrase-${word.id}-${i}`) ? 'text-primary' : 'text-muted-foreground'}`}
                                   disabled={isTTSLoading(`phrase-${word.id}-${i}`)}
                                 >
                                   {isTTSLoading(`phrase-${word.id}-${i}`) ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                   ) : (
-                                    <Volume2 className="h-4 w-4" />
+                                    <Volume2 className="h-5 w-5" />
                                   )}
                                 </button>
                               </div>

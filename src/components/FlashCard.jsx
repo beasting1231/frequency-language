@@ -73,13 +73,13 @@ export function FlashCard({ word, onSwipe, score, example, exampleLoading, onFli
                 <p className="text-5xl font-bold">{word.japanese}</p>
                 <button
                   onClick={(e) => handleSpeak(e, word.japanese, `card-word-${word.id}`)}
-                  className={`p-2 rounded-full hover:bg-accent transition-colors ${isSpeaking(`card-word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                  className={`p-3 rounded-full hover:bg-accent transition-colors ${isSpeaking(`card-word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
                   disabled={isTTSLoading(`card-word-${word.id}`)}
                 >
                   {isTTSLoading(`card-word-${word.id}`) ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <Loader2 className="h-7 w-7 animate-spin" />
                   ) : (
-                    <Volume2 className="h-6 w-6" />
+                    <Volume2 className="h-7 w-7" />
                   )}
                 </button>
               </div>
@@ -91,13 +91,13 @@ export function FlashCard({ word, onSwipe, score, example, exampleLoading, onFli
                 <p className="text-3xl font-bold">{word.japanese}</p>
                 <button
                   onClick={(e) => handleSpeak(e, word.japanese, `card-word-${word.id}`)}
-                  className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`card-word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                  className={`p-2 rounded-full hover:bg-accent transition-colors ${isSpeaking(`card-word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
                   disabled={isTTSLoading(`card-word-${word.id}`)}
                 >
                   {isTTSLoading(`card-word-${word.id}`) ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-6 w-6 animate-spin" />
                   ) : (
-                    <Volume2 className="h-5 w-5" />
+                    <Volume2 className="h-6 w-6" />
                   )}
                 </button>
               </div>
@@ -116,13 +116,13 @@ export function FlashCard({ word, onSwipe, score, example, exampleLoading, onFli
                       <p className="font-medium">{example.japanese}</p>
                       <button
                         onClick={(e) => handleSpeak(e, example.japanese, `card-example-${word.id}`)}
-                        className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`card-example-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                        className={`p-2 rounded-full hover:bg-accent transition-colors ${isSpeaking(`card-example-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
                         disabled={isTTSLoading(`card-example-${word.id}`)}
                       >
                         {isTTSLoading(`card-example-${word.id}`) ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-5 w-5 animate-spin" />
                         ) : (
-                          <Volume2 className="h-4 w-4" />
+                          <Volume2 className="h-5 w-5" />
                         )}
                       </button>
                     </div>
