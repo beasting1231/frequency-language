@@ -1,4 +1,4 @@
-const API_KEY = "AIzaSyCvxbK_MNBtT9bGQpI_ZXbTtKM1OJZqqAw";
+const API_KEY = "AIzaSyD8QMjh4EvvkQJlpbq2K7sGbMViefKhS0M";
 const TTS_MODEL = "gemini-2.5-flash-preview-tts";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent`;
 

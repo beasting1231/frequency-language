@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { words } from "@/data/words";
 
-const genAI = new GoogleGenerativeAI("AIzaSyCvxbK_MNBtT9bGQpI_ZXbTtKM1OJZqqAw");
+const genAI = new GoogleGenerativeAI("AIzaSyD8QMjh4EvvkQJlpbq2K7sGbMViefKhS0M");
 
 const wordList = words.map(w => w.japanese).join(", ");
 
