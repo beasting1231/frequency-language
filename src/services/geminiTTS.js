@@ -65,7 +65,7 @@ export async function generateSpeech(text) {
     body: JSON.stringify({
       contents: [
         {
-          parts: [{ text }],
+          parts: [{ text: `Say in Japanese: ${text}` }],
         },
       ],
       generationConfig: {
@@ -73,7 +73,7 @@ export async function generateSpeech(text) {
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: "Aoede", // Good for Japanese
+              voiceName: "Kore",
             },
           },
         },
@@ -88,6 +88,11 @@ export async function generateSpeech(text) {
   }
 
   const data = await response.json();
+
+  // Check for error in response
+  if (data.error) {
+    throw new Error(data.error.message || "API returned an error");
+  }
 
   // Extract base64 audio data
   const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
