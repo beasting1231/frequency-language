@@ -63,9 +63,12 @@ export async function generateSpeech(text) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: "You are a Japanese language audio reader. Read the provided Japanese text aloud clearly and naturally. Do not add any extra words or commentary." }],
+      },
       contents: [
         {
-          parts: [{ text: `Say in Japanese: ${text}` }],
+          parts: [{ text }],
         },
       ],
       generationConfig: {
@@ -81,16 +84,24 @@ export async function generateSpeech(text) {
     }),
   });
 
+  const responseText = await response.text();
+
   if (!response.ok) {
-    const error = await response.text();
-    console.error("Gemini TTS error:", error);
-    throw new Error(`TTS request failed: ${response.status}`);
+    console.error("Gemini TTS HTTP error:", response.status, responseText);
+    throw new Error(`TTS request failed: ${response.status} - ${responseText}`);
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch (e) {
+    console.error("Failed to parse TTS response:", responseText.substring(0, 500));
+    throw new Error("Invalid JSON response from TTS API");
+  }
 
   // Check for error in response
   if (data.error) {
+    console.error("Gemini API error:", data.error);
     throw new Error(data.error.message || "API returned an error");
   }
 
@@ -98,6 +109,7 @@ export async function generateSpeech(text) {
   const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 
   if (!audioData) {
+    console.error("No audio data found. Response structure:", JSON.stringify(data, null, 2).substring(0, 1000));
     throw new Error("No audio data in response");
   }
 
