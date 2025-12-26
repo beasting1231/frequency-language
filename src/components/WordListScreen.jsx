@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { words } from "@/data/words";
 import { usePhrases } from "@/hooks/usePhrases";
 import { usePhraseBreakdown } from "@/hooks/usePhraseBreakdown";
@@ -11,9 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Menu, Star, Loader2, ChevronDown } from "lucide-react";
+import { Menu, Star, Loader2, ChevronDown, Check, Trash2 } from "lucide-react";
 
-export function WordListScreen({ progress, isMemorized, sidebarOpen, setSidebarOpen, onNavigate }) {
+export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemorized, deleteWord, sidebarOpen, setSidebarOpen, onNavigate }) {
   const [expandedWord, setExpandedWord] = useState(null);
   const [phrases, setPhrases] = useState({});
   const [loadingWord, setLoadingWord] = useState(null);
@@ -23,6 +23,56 @@ export function WordListScreen({ progress, isMemorized, sidebarOpen, setSidebarO
   const [selectedPhrase, setSelectedPhrase] = useState(null);
   const [breakdown, setBreakdown] = useState(null);
   const { getBreakdown, loading: breakdownLoading, error: breakdownError } = usePhraseBreakdown();
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState({ open: false, word: null, x: 0, y: 0 });
+  const longPressTimer = useRef(null);
+  const longPressTriggered = useRef(false);
+
+  const handleContextMenu = useCallback((e, word) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ open: true, word, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleTouchStart = useCallback((e, word) => {
+    longPressTriggered.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressTriggered.current = true;
+      const touch = e.touches[0];
+      setContextMenu({ open: true, word, x: touch.clientX, y: touch.clientY });
+    }, 500);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  }, []);
+
+  const handleTouchMove = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu({ open: false, word: null, x: 0, y: 0 });
+  }, []);
+
+  const handleMarkAsMemorized = useCallback(() => {
+    if (contextMenu.word) {
+      markAsMemorized(contextMenu.word.id);
+    }
+    closeContextMenu();
+  }, [contextMenu.word, markAsMemorized, closeContextMenu]);
+
+  const handleDeleteWord = useCallback(() => {
+    if (contextMenu.word) {
+      deleteWord(contextMenu.word.id);
+    }
+    closeContextMenu();
+  }, [contextMenu.word, deleteWord, closeContextMenu]);
 
   const getWordStatus = (wordId) => {
     const wordProgress = progress[wordId];
@@ -34,6 +84,12 @@ export function WordListScreen({ progress, isMemorized, sidebarOpen, setSidebarO
   };
 
   const handleWordClick = async (word) => {
+    // Don't trigger click if long press was triggered
+    if (longPressTriggered.current) {
+      longPressTriggered.current = false;
+      return;
+    }
+
     if (expandedWord === word.id) {
       setExpandedWord(null);
       return;
@@ -66,7 +122,9 @@ export function WordListScreen({ progress, isMemorized, sidebarOpen, setSidebarO
     setBreakdown(null);
   };
 
-  const masteredCount = words.filter(word => isMemorized(word.id)).length;
+  // Filter out deleted words
+  const visibleWords = words.filter(word => !isDeleted(word.id));
+  const masteredCount = visibleWords.filter(word => isMemorized(word.id)).length;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -85,7 +143,7 @@ export function WordListScreen({ progress, isMemorized, sidebarOpen, setSidebarO
           <div>
             <span className="font-semibold">Word List</span>
             <p className="text-sm text-muted-foreground">
-              {masteredCount} / {words.length} mastered
+              {masteredCount} / {visibleWords.length} mastered
             </p>
           </div>
         </div>
@@ -94,7 +152,7 @@ export function WordListScreen({ progress, isMemorized, sidebarOpen, setSidebarO
       {/* Word list */}
       <div className="flex-1 overflow-y-auto p-4">
         <Card className="mx-auto max-w-xl">
-          {words.map((word, index) => {
+          {visibleWords.map((word, index) => {
             const { score, mastered } = getWordStatus(word.id);
             const isExpanded = expandedWord === word.id;
             const isLoading = loadingWord === word.id;
@@ -103,11 +161,15 @@ export function WordListScreen({ progress, isMemorized, sidebarOpen, setSidebarO
             return (
               <div
                 key={word.id}
-                className={index !== words.length - 1 ? 'border-b border-border/50' : ''}
+                className={index !== visibleWords.length - 1 ? 'border-b border-border/50' : ''}
               >
                 <div
                   onClick={() => handleWordClick(word)}
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                  onContextMenu={(e) => handleContextMenu(e, word)}
+                  onTouchStart={(e) => handleTouchStart(e, word)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchMove={handleTouchMove}
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors select-none"
                 >
                   <div className="w-6 flex justify-center">
                     {mastered && (
@@ -233,6 +295,38 @@ export function WordListScreen({ progress, isMemorized, sidebarOpen, setSidebarO
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Context Menu */}
+      {contextMenu.open && (
+        <>
+          <div
+            className="fixed inset-0 z-50"
+            onClick={closeContextMenu}
+          />
+          <div
+            className="fixed z-50 min-w-[160px] rounded-lg border bg-popover p-1 shadow-lg"
+            style={{
+              left: Math.min(contextMenu.x, window.innerWidth - 170),
+              top: Math.min(contextMenu.y, window.innerHeight - 100),
+            }}
+          >
+            <button
+              onClick={handleMarkAsMemorized}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+            >
+              <Check className="h-4 w-4" />
+              Mark as memorized
+            </button>
+            <button
+              onClick={handleDeleteWord}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-500 hover:bg-accent transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete word
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

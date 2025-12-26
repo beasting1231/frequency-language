@@ -16,7 +16,7 @@ import {
 import { RotateCcw, Menu, Trophy, TrendingUp, Settings, Minus, Plus } from "lucide-react";
 
 export function StudyScreen({ user }) {
-  const { loading, progress, updateWordScore, getWordScore, getStudyWords, getStats, isMemorized } = useWordProgress(user.uid);
+  const { loading, progress, updateWordScore, getWordScore, getStudyWords, getStats, isMemorized, isDeleted, markAsMemorized, deleteWord } = useWordProgress(user.uid);
   const { getExample, getExampleSync, isLoading: isExampleLoading } = useExampleSentence();
   const [studyQueue, setStudyQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -83,6 +83,9 @@ export function StudyScreen({ user }) {
       <WordListScreen
         progress={progress}
         isMemorized={isMemorized}
+        isDeleted={isDeleted}
+        markAsMemorized={markAsMemorized}
+        deleteWord={deleteWord}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
         onNavigate={handleNavigate}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from "@/firebase";
 
 // Scoring algorithm:
@@ -22,6 +22,7 @@ function calculateNewScore(currentScore, isCorrect) {
 
 export function useWordProgress(userId) {
   const [progress, setProgress] = useState({});
+  const [deletedWords, setDeletedWords] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function useWordProgress(userId) {
 
         if (docSnap.exists()) {
           setProgress(docSnap.data().wordProgress || {});
+          setDeletedWords(docSnap.data().deletedWords || []);
         }
       } catch (error) {
         console.error("Error loading progress:", error);
@@ -90,11 +92,55 @@ export function useWordProgress(userId) {
     return correct >= 10 && attempts > 0 && (correct / attempts) >= 0.9;
   }, [progress]);
 
+  const markAsMemorized = useCallback(async (wordId) => {
+    if (!userId) return;
+
+    const newProgress = {
+      ...progress,
+      [wordId]: {
+        ...progress[wordId],
+        score: 10,
+        attempts: Math.max(progress[wordId]?.attempts || 0, 11),
+        correct: Math.max(progress[wordId]?.correct || 0, 10),
+        lastReviewed: Date.now(),
+      },
+    };
+
+    setProgress(newProgress);
+
+    try {
+      const docRef = doc(db, "users", userId);
+      await setDoc(docRef, { wordProgress: newProgress }, { merge: true });
+    } catch (error) {
+      console.error("Error marking as memorized:", error);
+    }
+  }, [userId, progress]);
+
+  const deleteWord = useCallback(async (wordId) => {
+    if (!userId) return;
+
+    const newDeletedWords = [...deletedWords, wordId];
+    setDeletedWords(newDeletedWords);
+
+    try {
+      const docRef = doc(db, "users", userId);
+      await setDoc(docRef, { deletedWords: newDeletedWords }, { merge: true });
+    } catch (error) {
+      console.error("Error deleting word:", error);
+    }
+  }, [userId, deletedWords]);
+
+  const isDeleted = useCallback((wordId) => {
+    return deletedWords.includes(wordId);
+  }, [deletedWords]);
+
   const getStudyWords = useCallback((words, options = {}) => {
     const { count = 10, excludeMemorized = false, randomOrder = false } = options;
 
+    // Filter out deleted words first
+    let availableWords = words.filter(word => !isDeleted(word.id));
+
     // Filter words if excluding memorized
-    let availableWords = [...words];
     if (excludeMemorized) {
       availableWords = availableWords.filter(word => !isMemorized(word.id));
     }
@@ -111,7 +157,7 @@ export function useWordProgress(userId) {
     }
 
     return selected;
-  }, [progress, isMemorized]);
+  }, [progress, isMemorized, isDeleted]);
 
   const getStats = useCallback(() => {
     const wordIds = Object.keys(progress);
@@ -140,5 +186,8 @@ export function useWordProgress(userId) {
     getStudyWords,
     getStats,
     isMemorized,
+    isDeleted,
+    markAsMemorized,
+    deleteWord,
   };
 }
