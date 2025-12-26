@@ -120,7 +120,8 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
       const touch = e.touches[0];
       const dx = Math.abs(touch.clientX - touchStartPos.current.x);
       const dy = Math.abs(touch.clientY - touchStartPos.current.y);
-      if (dx > 10 || dy > 10) {
+      // Only cancel if moved significantly (20px) to allow for finger wobble
+      if (dx > 20 || dy > 20) {
         clearTimeout(longPressTimer.current);
         longPressTimer.current = null;
       }
@@ -247,7 +248,6 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
                   onTouchEnd={handleTouchEnd}
                   onTouchMove={handleTouchMove}
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors select-none"
-                  style={{ touchAction: 'pan-y' }}
                 >
                   <div className="w-6 flex justify-center">
                     {mastered && (
