@@ -35,24 +35,42 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
     setContextMenu({ open: true, word, x: e.clientX, y: e.clientY });
   }, []);
 
+  const touchStartPos = useRef({ x: 0, y: 0 });
+
   const handleTouchStart = useCallback((e, word) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
     longPressTriggered.current = false;
+
     longPressTimer.current = setTimeout(() => {
       longPressTriggered.current = true;
-      const touch = e.touches[0];
-      setContextMenu({ open: true, word, x: touch.clientX, y: touch.clientY });
+      // Vibrate if supported
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+      setContextMenu({ open: true, word, x: touchStartPos.current.x, y: touchStartPos.current.y });
     }, 500);
   }, []);
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = useCallback((e) => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
     }
+    // Prevent click if long press was triggered
+    if (longPressTriggered.current) {
+      e.preventDefault();
+    }
   }, []);
 
-  const handleTouchMove = useCallback(() => {
+  const handleTouchMove = useCallback((e) => {
     if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+      // Cancel if moved more than 10px
+      if (dx > 10 || dy > 10) {
+        clearTimeout(longPressTimer.current);
+      }
     }
   }, []);
 
@@ -169,7 +187,7 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
                   onTouchStart={(e) => handleTouchStart(e, word)}
                   onTouchEnd={handleTouchEnd}
                   onTouchMove={handleTouchMove}
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors select-none"
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors select-none touch-manipulation"
                 >
                   <div className="w-6 flex justify-center">
                     {mastered && (
