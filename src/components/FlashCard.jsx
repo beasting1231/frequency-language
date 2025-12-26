@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { Card } from "@/components/ui/card";
-import { Check, X } from "lucide-react";
+import { Check, X, Loader2 } from "lucide-react";
 
-export function FlashCard({ word, onSwipe, score }) {
+export function FlashCard({ word, onSwipe, score, example, exampleLoading, onFlip }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [exitX, setExitX] = useState(0);
 
@@ -52,9 +52,14 @@ export function FlashCard({ word, onSwipe, score }) {
 
       <Card
         className="mx-auto w-full max-w-sm cursor-grab active:cursor-grabbing select-none"
-        onClick={() => setIsFlipped(!isFlipped)}
+        onClick={() => {
+          if (!isFlipped && onFlip) {
+            onFlip(word);
+          }
+          setIsFlipped(!isFlipped);
+        }}
       >
-        <div className="flex min-h-[300px] flex-col items-center justify-center p-8">
+        <div className="flex min-h-[300px] flex-col items-center justify-center p-6">
           {!isFlipped ? (
             <>
               <p className="text-5xl font-bold mb-2">{word.japanese}</p>
@@ -62,9 +67,24 @@ export function FlashCard({ word, onSwipe, score }) {
             </>
           ) : (
             <>
-              <p className="text-4xl font-bold mb-2">{word.japanese}</p>
-              <p className="text-2xl text-primary mb-1">{word.english}</p>
-              <p className="text-muted-foreground text-lg">{word.romaji}</p>
+              <p className="text-3xl font-bold mb-1">{word.japanese}</p>
+              <p className="text-xl text-primary mb-1">{word.english}</p>
+              <p className="text-muted-foreground mb-4">{word.romaji}</p>
+
+              <div className="w-full border-t pt-3 mt-2">
+                {exampleLoading ? (
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading example...</span>
+                  </div>
+                ) : example ? (
+                  <div className="text-center">
+                    <p className="font-medium">{example.japanese}</p>
+                    <p className="text-sm text-muted-foreground">{example.romaji}</p>
+                    <p className="text-sm text-primary">{example.english}</p>
+                  </div>
+                ) : null}
+              </div>
             </>
           )}
         </div>

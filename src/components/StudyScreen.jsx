@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { words } from "@/data/words";
 import { useWordProgress } from "@/hooks/useWordProgress";
+import { useExampleSentence } from "@/hooks/useExampleSentence";
 import { FlashCard } from "@/components/FlashCard";
 import { Sidebar } from "@/components/Sidebar";
 import { WordListScreen } from "@/components/WordListScreen";
@@ -16,6 +17,7 @@ import { RotateCcw, Menu, Trophy, TrendingUp, Settings, Minus, Plus } from "luci
 
 export function StudyScreen({ user }) {
   const { loading, progress, updateWordScore, getWordScore, getStudyWords, getStats, isMemorized } = useWordProgress(user.uid);
+  const { getExample, getExampleSync, isLoading: isExampleLoading } = useExampleSentence();
   const [studyQueue, setStudyQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionStats, setSessionStats] = useState({ correct: 0, incorrect: 0 });
@@ -60,6 +62,10 @@ export function StudyScreen({ user }) {
 
   const handleNavigate = (screen) => {
     setCurrentScreen(screen);
+  };
+
+  const handleFlip = (word) => {
+    getExample(word);
   };
 
   const stats = getStats();
@@ -226,6 +232,9 @@ export function StudyScreen({ user }) {
               word={currentWord}
               score={getWordScore(currentWord.id)}
               onSwipe={handleSwipe}
+              onFlip={handleFlip}
+              example={getExampleSync(currentWord.id)}
+              exampleLoading={isExampleLoading(currentWord.id)}
             />
           )}
         </div>

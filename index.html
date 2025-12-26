@@ -5,12 +5,105 @@
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
-    <meta name="description" content="Frequency Language App" />
+    <meta name="description" content="Japanese frequency-based language learning" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FreqLang" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
     <title>Frequency Language</title>
+    <script>
+      // PWA Auto-Update Logic
+      function showUpdateToastAndReload() {
+        if (document.getElementById('sw-update-toast')) return;
+
+        const toast = document.createElement('div');
+        toast.id = 'sw-update-toast';
+        toast.innerHTML = `
+          <div style="
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            color: #fff;
+            padding: 20px 32px;
+            border-radius: 12px;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 16px;
+            font-weight: 500;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(59,130,246,0.3);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid rgba(59,130,246,0.4);
+            animation: pulse 1.5s ease-in-out infinite;
+          ">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="animation: spin 1s linear infinite;">
+              <circle cx="12" cy="12" r="10" stroke="rgba(59,130,246,0.3)" stroke-width="3"/>
+              <path d="M12 2a10 10 0 0 1 10 10" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            Updating app...
+          </div>
+          <style>
+            @keyframes spin { to { transform: rotate(360deg); } }
+            @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+          </style>
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
+
+      if ('serviceWorker' in navigator) {
+        let refreshing = false;
+
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
+            // Check for updates on load
+            registration.update();
+
+            // Check for updates when app comes back to foreground
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') {
+                registration.update();
+              }
+            });
+
+            // Listen for service worker updates
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'activated') {
+                  if (!navigator.serviceWorker.controller) {
+                    return;
+                  }
+                  if (!refreshing) {
+                    refreshing = true;
+                    showUpdateToastAndReload();
+                  }
+                }
+              });
+            });
+          });
+
+          // Handle controller change
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (navigator.serviceWorker.controller && !refreshing) {
+              refreshing = true;
+              showUpdateToastAndReload();
+            }
+          });
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
