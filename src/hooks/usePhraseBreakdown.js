@@ -18,15 +18,17 @@ Provide a detailed breakdown of each word/particle in the sentence. Explain:
 1. What each word means
 2. The grammatical role of each word/particle
 3. How they combine to form the meaning
+4. If a verb or adjective is conjugated, show the dictionary form
 
 Return ONLY a JSON object with this structure:
 {
   "words": [
     {
-      "japanese": "the word in Japanese",
+      "japanese": "the word as it appears",
       "romaji": "romanization",
       "meaning": "English meaning",
-      "role": "grammatical role (noun, verb, particle, etc.)"
+      "role": "grammatical role (noun, verb, particle, etc.)",
+      "dictionaryForm": "original/dictionary form if conjugated (e.g. 飲みます → 飲む), or null if not applicable"
     }
   ],
   "explanation": "A brief explanation of how the sentence structure works and any cultural/grammatical notes"

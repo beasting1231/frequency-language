@@ -82,33 +82,47 @@ export function useWordProgress(userId) {
     return progress[wordId]?.score ?? 5.0;
   }, [progress]);
 
-  const getStudyWords = useCallback((words, count = 10) => {
-    // Prioritize words with lower scores and less recent reviews
-    const wordsWithScores = words.map(word => ({
-      ...word,
-      score: progress[word.id]?.score ?? 5.0,
-      lastReviewed: progress[word.id]?.lastReviewed ?? 0,
-    }));
-
-    // Sort by score (ascending) then by lastReviewed (ascending)
-    wordsWithScores.sort((a, b) => {
-      if (a.score !== b.score) return a.score - b.score;
-      return a.lastReviewed - b.lastReviewed;
-    });
-
-    return wordsWithScores.slice(0, count);
+  const isMemorized = useCallback((wordId) => {
+    const wordProgress = progress[wordId];
+    if (!wordProgress) return false;
+    const { correct = 0, attempts = 0 } = wordProgress;
+    // Memorized: at least 10 correct AND 90% accuracy
+    return correct >= 10 && attempts > 0 && (correct / attempts) >= 0.9;
   }, [progress]);
 
+  const getStudyWords = useCallback((words, options = {}) => {
+    const { count = 10, excludeMemorized = false, randomOrder = false } = options;
+
+    // Filter words if excluding memorized
+    let availableWords = [...words];
+    if (excludeMemorized) {
+      availableWords = availableWords.filter(word => !isMemorized(word.id));
+    }
+
+    // Take first N words (sequential from beginning)
+    let selected = availableWords.slice(0, count);
+
+    // Shuffle if random order enabled
+    if (randomOrder) {
+      for (let i = selected.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [selected[i], selected[j]] = [selected[j], selected[i]];
+      }
+    }
+
+    return selected;
+  }, [progress, isMemorized]);
+
   const getStats = useCallback(() => {
-    const scores = Object.values(progress);
-    if (scores.length === 0) {
+    const wordIds = Object.keys(progress);
+    if (wordIds.length === 0) {
       return { studied: 0, mastered: 0, learning: 0, avgScore: 0 };
     }
 
-    const studied = scores.length;
-    const mastered = scores.filter(p => p.score >= 8).length;
-    const learning = scores.filter(p => p.score < 8).length;
-    const avgScore = scores.reduce((sum, p) => sum + p.score, 0) / scores.length;
+    const studied = wordIds.length;
+    const mastered = wordIds.filter(id => isMemorized(id)).length;
+    const learning = studied - mastered;
+    const avgScore = Object.values(progress).reduce((sum, p) => sum + p.score, 0) / studied;
 
     return {
       studied,
@@ -116,7 +130,7 @@ export function useWordProgress(userId) {
       learning,
       avgScore: Math.round(avgScore * 10) / 10,
     };
-  }, [progress]);
+  }, [progress, isMemorized]);
 
   return {
     progress,
@@ -125,5 +139,6 @@ export function useWordProgress(userId) {
     getWordScore,
     getStudyWords,
     getStats,
+    isMemorized,
   };
 }

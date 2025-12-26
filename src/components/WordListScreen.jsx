@@ -2,6 +2,7 @@ import { useState } from "react";
 import { words } from "@/data/words";
 import { usePhrases } from "@/hooks/usePhrases";
 import { usePhraseBreakdown } from "@/hooks/usePhraseBreakdown";
+import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -10,9 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Star, Loader2, ChevronDown } from "lucide-react";
+import { Menu, Star, Loader2, ChevronDown } from "lucide-react";
 
-export function WordListScreen({ progress, onBack }) {
+export function WordListScreen({ progress, isMemorized, sidebarOpen, setSidebarOpen, onNavigate }) {
   const [expandedWord, setExpandedWord] = useState(null);
   const [phrases, setPhrases] = useState({});
   const [loadingWord, setLoadingWord] = useState(null);
@@ -28,7 +29,7 @@ export function WordListScreen({ progress, onBack }) {
     if (!wordProgress) return { score: null, mastered: false };
     return {
       score: wordProgress.score,
-      mastered: wordProgress.score >= 8,
+      mastered: isMemorized(wordId),
     };
   };
 
@@ -65,20 +66,28 @@ export function WordListScreen({ progress, onBack }) {
     setBreakdown(null);
   };
 
-  const masteredCount = Object.values(progress).filter(p => p.score >= 8).length;
+  const masteredCount = words.filter(word => isMemorized(word.id)).length;
 
   return (
     <div className="flex min-h-screen flex-col">
+      <Sidebar
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        onNavigate={onNavigate}
+      />
+
       {/* Header */}
-      <header className="flex items-center gap-2 border-b px-4 py-3">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="font-semibold">Word List</h1>
-          <p className="text-sm text-muted-foreground">
-            {masteredCount} / {words.length} mastered
-          </p>
+      <header className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div>
+            <span className="font-semibold">Word List</span>
+            <p className="text-sm text-muted-foreground">
+              {masteredCount} / {words.length} mastered
+            </p>
+          </div>
         </div>
       </header>
 
@@ -201,6 +210,11 @@ export function WordListScreen({ progress, onBack }) {
                             </div>
                             <p className="text-primary text-sm">{word.meaning}</p>
                             <p className="text-xs text-muted-foreground mt-1">{word.role}</p>
+                            {word.dictionaryForm && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Dictionary form: <span className="font-medium">{word.dictionaryForm}</span>
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>

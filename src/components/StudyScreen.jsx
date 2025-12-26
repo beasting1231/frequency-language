@@ -6,23 +6,33 @@ import { Sidebar } from "@/components/Sidebar";
 import { WordListScreen } from "@/components/WordListScreen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RotateCcw, Menu, Trophy, TrendingUp } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RotateCcw, Menu, Trophy, TrendingUp, Settings, Minus, Plus } from "lucide-react";
 
 export function StudyScreen({ user }) {
-  const { loading, progress, updateWordScore, getWordScore, getStudyWords, getStats } = useWordProgress(user.uid);
+  const { loading, progress, updateWordScore, getWordScore, getStudyWords, getStats, isMemorized } = useWordProgress(user.uid);
   const [studyQueue, setStudyQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionStats, setSessionStats] = useState({ correct: 0, incorrect: 0 });
   const [showStats, setShowStats] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState("study");
+  const [currentScreen, setCurrentScreen] = useState("words");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [wordCount, setWordCount] = useState(20);
+  const [excludeMemorized, setExcludeMemorized] = useState(true);
+  const [randomOrder, setRandomOrder] = useState(true);
 
   useEffect(() => {
-    if (!loading) {
-      const queue = getStudyWords(words, 20);
+    if (!loading && currentScreen === "study") {
+      const queue = getStudyWords(words, { count: wordCount, excludeMemorized, randomOrder });
       setStudyQueue(queue);
     }
-  }, [loading, getStudyWords]);
+  }, [loading, getStudyWords, wordCount, excludeMemorized, randomOrder, currentScreen]);
 
   const handleSwipe = async (isCorrect) => {
     const currentWord = studyQueue[currentIndex];
@@ -41,7 +51,7 @@ export function StudyScreen({ user }) {
   };
 
   const handleRestart = () => {
-    const queue = getStudyWords(words, 20);
+    const queue = getStudyWords(words, { count: wordCount, excludeMemorized, randomOrder });
     setStudyQueue(queue);
     setCurrentIndex(0);
     setSessionStats({ correct: 0, incorrect: 0 });
@@ -66,7 +76,10 @@ export function StudyScreen({ user }) {
     return (
       <WordListScreen
         progress={progress}
-        onBack={() => setCurrentScreen("study")}
+        isMemorized={isMemorized}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        onNavigate={handleNavigate}
       />
     );
   }
@@ -123,9 +136,69 @@ export function StudyScreen({ user }) {
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="font-semibold">Frequency</span>
+          <span className="font-semibold">Study</span>
         </div>
+        <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+          <Settings className="h-5 w-5" />
+        </Button>
       </header>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-[280px]">
+          <DialogHeader>
+            <DialogTitle>Study Settings</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Words to study</label>
+              <p className="text-xs text-muted-foreground">Sequential from word 1</p>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setWordCount(Math.max(1, wordCount - 1))}
+                  disabled={wordCount <= 1}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="text-2xl font-bold w-12 text-center">{wordCount}</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setWordCount(Math.min(500, wordCount + 1))}
+                  disabled={wordCount >= 500}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium">Exclude memorized</label>
+                <p className="text-xs text-muted-foreground">10+ correct, 90%+ acc</p>
+              </div>
+              <Button
+                variant={excludeMemorized ? "default" : "outline"}
+                size="sm"
+                onClick={() => setExcludeMemorized(!excludeMemorized)}
+              >
+                {excludeMemorized ? "On" : "Off"}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Random order</label>
+              <Button
+                variant={randomOrder ? "default" : "outline"}
+                size="sm"
+                onClick={() => setRandomOrder(!randomOrder)}
+              >
+                {randomOrder ? "On" : "Off"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats bar */}
       <div className="border-b px-4 py-2">

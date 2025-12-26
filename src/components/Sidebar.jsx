@@ -5,7 +5,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { BookOpen, LogOut } from "lucide-react";
+import { BookOpen, LogOut, GraduationCap } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/firebase";
 
@@ -26,7 +26,7 @@ export function Sidebar({ open, onOpenChange, onNavigate }) {
         <SheetHeader className="p-4 border-b">
           <SheetTitle>Frequency</SheetTitle>
         </SheetHeader>
-        <nav className="flex-1 p-2">
+        <nav className="flex-1 p-2 space-y-1">
           <Button
             variant="ghost"
             className="w-full justify-start gap-3"
@@ -34,6 +34,14 @@ export function Sidebar({ open, onOpenChange, onNavigate }) {
           >
             <BookOpen className="h-5 w-5" />
             Word List
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3"
+            onClick={() => handleNavClick("study")}
+          >
+            <GraduationCap className="h-5 w-5" />
+            Study
           </Button>
         </nav>
         <div className="p-2 border-t">

@@ -14,6 +14,7 @@ Rules:
 - Keep phrases simple and beginner-friendly
 - Try to use only common words from this vocabulary list when possible: ${wordList}
 - Each phrase should be natural Japanese
+- You may conjugate or modify verbs/adjectives to sound more natural (e.g. 飲む → 飲みます, 食べる → 食べた)
 
 Return ONLY a JSON array with exactly 3 objects, each containing:
 - "japanese": the phrase in Japanese
@@ -22,7 +23,7 @@ Return ONLY a JSON array with exactly 3 objects, each containing:
 
 Example format:
 [
-  {"japanese": "水を飲む", "romaji": "mizu wo nomu", "english": "drink water"},
+  {"japanese": "水を飲みます", "romaji": "mizu wo nomimasu", "english": "I drink water"},
   {"japanese": "...", "romaji": "...", "english": "..."},
   {"japanese": "...", "romaji": "...", "english": "..."}
 ]
