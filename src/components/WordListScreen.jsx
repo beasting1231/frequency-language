@@ -24,7 +24,7 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
   const [selectedPhrase, setSelectedPhrase] = useState(null);
   const [breakdown, setBreakdown] = useState(null);
   const { getBreakdown, loading: breakdownLoading, error: breakdownError } = usePhraseBreakdown();
-  const { speak, isSpeaking } = useTextToSpeech();
+  const { speak, isSpeaking, isLoading: isTTSLoading } = useTextToSpeech();
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState({ open: false, word: null, x: 0, y: 0 });
@@ -282,8 +282,13 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
                       <button
                         onClick={(e) => handleSpeak(e, word.japanese, `word-${word.id}`)}
                         className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                        disabled={isTTSLoading(`word-${word.id}`)}
                       >
-                        <Volume2 className="h-4 w-4" />
+                        {isTTSLoading(`word-${word.id}`) ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Volume2 className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -325,8 +330,13 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
                                 <button
                                   onClick={(e) => handleSpeak(e, phrase.japanese, `phrase-${word.id}-${i}`)}
                                   className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`phrase-${word.id}-${i}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                                  disabled={isTTSLoading(`phrase-${word.id}-${i}`)}
                                 >
-                                  <Volume2 className="h-4 w-4" />
+                                  {isTTSLoading(`phrase-${word.id}-${i}`) ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Volume2 className="h-4 w-4" />
+                                  )}
                                 </button>
                               </div>
                               <p className="text-muted-foreground text-sm">{phrase.romaji}</p>

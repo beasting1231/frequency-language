@@ -1,75 +1,75 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
+import { generateSpeech } from "@/services/geminiTTS";
 
 export function useTextToSpeech() {
   const [speaking, setSpeaking] = useState(null); // ID of currently speaking text
-  const [voices, setVoices] = useState([]);
-  const [japaneseVoice, setJapaneseVoice] = useState(null);
-  const utteranceRef = useRef(null);
+  const [loading, setLoading] = useState(null); // ID of currently loading text
+  const audioRef = useRef(null);
+  const cacheRef = useRef(new Map()); // Cache audio URLs by text
 
-  // Load available voices
-  useEffect(() => {
-    const loadVoices = () => {
-      const availableVoices = speechSynthesis.getVoices();
-      setVoices(availableVoices);
+  const speak = useCallback(async (text, id) => {
+    // If clicking the same item that's speaking, stop it
+    if (speaking === id) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setSpeaking(null);
+      return;
+    }
 
-      // Find a Japanese voice
-      const jaVoice = availableVoices.find(
-        (voice) =>
-          voice.lang === "ja-JP" ||
-          voice.lang.startsWith("ja") ||
-          voice.name.toLowerCase().includes("japanese")
-      );
-      setJapaneseVoice(jaVoice || null);
-    };
+    // Stop any current audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
 
-    // Voices may not be immediately available
-    loadVoices();
-    speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    try {
+      let audioUrl = cacheRef.current.get(text);
 
-    return () => {
-      speechSynthesis.removeEventListener("voiceschanged", loadVoices);
-    };
-  }, []);
+      // Generate audio if not cached
+      if (!audioUrl) {
+        setLoading(id);
+        audioUrl = await generateSpeech(text);
+        cacheRef.current.set(text, audioUrl);
+        setLoading(null);
+      }
 
-  const speak = useCallback(
-    (text, id) => {
-      // Cancel any ongoing speech
-      speechSynthesis.cancel();
+      // Create and play audio
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
 
-      // If clicking the same item that's speaking, just stop
-      if (speaking === id) {
+      audio.onplay = () => setSpeaking(id);
+      audio.onended = () => setSpeaking(null);
+      audio.onerror = () => {
+        console.error("Audio playback error");
         setSpeaking(null);
-        return;
-      }
+      };
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "ja-JP";
-      utterance.rate = 0.9; // Slightly slower for learning
-
-      if (japaneseVoice) {
-        utterance.voice = japaneseVoice;
-      }
-
-      utterance.onstart = () => setSpeaking(id);
-      utterance.onend = () => setSpeaking(null);
-      utterance.onerror = () => setSpeaking(null);
-
-      utteranceRef.current = utterance;
-      speechSynthesis.speak(utterance);
-    },
-    [japaneseVoice, speaking]
-  );
+      await audio.play();
+    } catch (error) {
+      console.error("TTS error:", error);
+      setLoading(null);
+      setSpeaking(null);
+    }
+  }, [speaking]);
 
   const stop = useCallback(() => {
-    speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     setSpeaking(null);
   }, []);
 
   const isSpeaking = useCallback(
-    (id) => {
-      return speaking === id;
-    },
+    (id) => speaking === id,
     [speaking]
+  );
+
+  const isLoading = useCallback(
+    (id) => loading === id,
+    [loading]
   );
 
   return {
@@ -77,6 +77,6 @@ export function useTextToSpeech() {
     stop,
     speaking,
     isSpeaking,
-    hasJapaneseVoice: !!japaneseVoice,
+    isLoading,
   };
 }
