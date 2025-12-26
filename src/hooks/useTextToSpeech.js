@@ -27,11 +27,20 @@ export function useTextToSpeech() {
       setLoading(id);
       // Get audio URL (from Firebase Storage cache or generate new)
       const audioUrl = await generateSpeech(text);
-      setLoading(null);
 
-      // Create and play audio
-      const audio = new Audio(audioUrl);
+      // Create audio element
+      const audio = new Audio();
       audioRef.current = audio;
+
+      // Wait for audio to be ready before playing
+      await new Promise((resolve, reject) => {
+        audio.oncanplaythrough = resolve;
+        audio.onerror = reject;
+        audio.src = audioUrl;
+        audio.load();
+      });
+
+      setLoading(null);
 
       audio.onplay = () => setSpeaking(id);
       audio.onended = () => setSpeaking(null);
