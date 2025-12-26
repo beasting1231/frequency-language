@@ -28,13 +28,24 @@ export function StudyScreen({ user }) {
   const [wordCount, setWordCount] = useState(20);
   const [excludeMemorized, setExcludeMemorized] = useState(true);
   const [randomOrder, setRandomOrder] = useState(true);
+  const [needsNewQueue, setNeedsNewQueue] = useState(true);
 
+  // Generate queue only when needed, not on every progress change
   useEffect(() => {
-    if (!loading && currentScreen === "study") {
+    if (!loading && currentScreen === "study" && needsNewQueue) {
       const queue = getStudyWords(words, { count: wordCount, excludeMemorized, randomOrder });
       setStudyQueue(queue);
+      setCurrentIndex(0);
+      setNeedsNewQueue(false);
     }
-  }, [loading, getStudyWords, wordCount, excludeMemorized, randomOrder, currentScreen]);
+  }, [loading, currentScreen, needsNewQueue, wordCount, excludeMemorized, randomOrder]);
+
+  // Request new queue when settings change
+  useEffect(() => {
+    if (currentScreen === "study") {
+      setNeedsNewQueue(true);
+    }
+  }, [wordCount, excludeMemorized, randomOrder]);
 
   const handleSwipe = async (isCorrect) => {
     const currentWord = studyQueue[currentIndex];
@@ -53,14 +64,15 @@ export function StudyScreen({ user }) {
   };
 
   const handleRestart = () => {
-    const queue = getStudyWords(words, { count: wordCount, excludeMemorized, randomOrder });
-    setStudyQueue(queue);
-    setCurrentIndex(0);
     setSessionStats({ correct: 0, incorrect: 0 });
     setShowStats(false);
+    setNeedsNewQueue(true);
   };
 
   const handleNavigate = (screen) => {
+    if (screen === "study" && currentScreen !== "study") {
+      setNeedsNewQueue(true);
+    }
     setCurrentScreen(screen);
   };
 
