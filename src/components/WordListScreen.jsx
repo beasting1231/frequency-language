@@ -28,6 +28,7 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
   const [contextMenu, setContextMenu] = useState({ open: false, word: null, x: 0, y: 0 });
   const longPressTimer = useRef(null);
   const longPressTriggered = useRef(false);
+  const menuJustOpened = useRef(false);
 
   const handleContextMenu = useCallback((e, word) => {
     e.preventDefault();
@@ -44,11 +45,16 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
 
     longPressTimer.current = setTimeout(() => {
       longPressTriggered.current = true;
+      menuJustOpened.current = true;
       // Vibrate if supported
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
       setContextMenu({ open: true, word, x: touchStartPos.current.x, y: touchStartPos.current.y });
+      // Prevent immediate close
+      setTimeout(() => {
+        menuJustOpened.current = false;
+      }, 300);
     }, 500);
   }, []);
 
@@ -75,6 +81,11 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
   }, []);
 
   const closeContextMenu = useCallback(() => {
+    if (menuJustOpened.current) return;
+    setContextMenu({ open: false, word: null, x: 0, y: 0 });
+  }, []);
+
+  const forceCloseContextMenu = useCallback(() => {
     setContextMenu({ open: false, word: null, x: 0, y: 0 });
   }, []);
 
@@ -82,15 +93,15 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
     if (contextMenu.word) {
       markAsMemorized(contextMenu.word.id);
     }
-    closeContextMenu();
-  }, [contextMenu.word, markAsMemorized, closeContextMenu]);
+    forceCloseContextMenu();
+  }, [contextMenu.word, markAsMemorized, forceCloseContextMenu]);
 
   const handleDeleteWord = useCallback(() => {
     if (contextMenu.word) {
       deleteWord(contextMenu.word.id);
     }
-    closeContextMenu();
-  }, [contextMenu.word, deleteWord, closeContextMenu]);
+    forceCloseContextMenu();
+  }, [contextMenu.word, deleteWord, forceCloseContextMenu]);
 
   const getWordStatus = (wordId) => {
     const wordProgress = progress[wordId];
