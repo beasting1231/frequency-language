@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { Card } from "@/components/ui/card";
-import { Check, X, Loader2 } from "lucide-react";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { Check, X, Loader2, Volume2 } from "lucide-react";
 
 export function FlashCard({ word, onSwipe, score, example, exampleLoading, onFlip }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [exitX, setExitX] = useState(0);
+  const { speak, isSpeaking } = useTextToSpeech();
 
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
@@ -24,6 +26,11 @@ export function FlashCard({ word, onSwipe, score, example, exampleLoading, onFli
     } else {
       animate(x, 0, { type: "spring", stiffness: 300, damping: 20 });
     }
+  };
+
+  const handleSpeak = (e, text, id) => {
+    e.stopPropagation();
+    speak(text, id);
   };
 
   return (
@@ -62,12 +69,28 @@ export function FlashCard({ word, onSwipe, score, example, exampleLoading, onFli
         <div className="flex min-h-[300px] flex-col items-center justify-center p-6">
           {!isFlipped ? (
             <>
-              <p className="text-5xl font-bold mb-2">{word.japanese}</p>
+              <div className="flex items-center gap-3 mb-2">
+                <p className="text-5xl font-bold">{word.japanese}</p>
+                <button
+                  onClick={(e) => handleSpeak(e, word.japanese, `card-word-${word.id}`)}
+                  className={`p-2 rounded-full hover:bg-accent transition-colors ${isSpeaking(`card-word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                  <Volume2 className="h-6 w-6" />
+                </button>
+              </div>
               <p className="text-muted-foreground text-lg">{word.romaji}</p>
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold mb-1">{word.japanese}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-3xl font-bold">{word.japanese}</p>
+                <button
+                  onClick={(e) => handleSpeak(e, word.japanese, `card-word-${word.id}`)}
+                  className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`card-word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                  <Volume2 className="h-5 w-5" />
+                </button>
+              </div>
               <p className="text-xl text-primary mb-1">{word.english}</p>
               <p className="text-muted-foreground mb-4">{word.romaji}</p>
 
@@ -79,7 +102,15 @@ export function FlashCard({ word, onSwipe, score, example, exampleLoading, onFli
                   </div>
                 ) : example ? (
                   <div className="text-center">
-                    <p className="font-medium">{example.japanese}</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <p className="font-medium">{example.japanese}</p>
+                      <button
+                        onClick={(e) => handleSpeak(e, example.japanese, `card-example-${word.id}`)}
+                        className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`card-example-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                      >
+                        <Volume2 className="h-4 w-4" />
+                      </button>
+                    </div>
                     <p className="text-sm text-muted-foreground">{example.romaji}</p>
                     <p className="text-sm text-primary">{example.english}</p>
                   </div>

@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { words } from "@/data/words";
 import { usePhrases } from "@/hooks/usePhrases";
 import { usePhraseBreakdown } from "@/hooks/usePhraseBreakdown";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Menu, Star, Loader2, ChevronDown, Check, Trash2 } from "lucide-react";
+import { Menu, Star, Loader2, ChevronDown, Check, Trash2, Volume2 } from "lucide-react";
 
 export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemorized, deleteWord, sidebarOpen, setSidebarOpen, onNavigate }) {
   const [expandedWord, setExpandedWord] = useState(null);
@@ -23,6 +24,7 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
   const [selectedPhrase, setSelectedPhrase] = useState(null);
   const [breakdown, setBreakdown] = useState(null);
   const { getBreakdown, loading: breakdownLoading, error: breakdownError } = usePhraseBreakdown();
+  const { speak, isSpeaking } = useTextToSpeech();
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState({ open: false, word: null, x: 0, y: 0 });
@@ -212,6 +214,11 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
     setBreakdown(null);
   };
 
+  const handleSpeak = (e, text, id) => {
+    e.stopPropagation();
+    speak(text, id);
+  };
+
   // Filter out deleted words
   const visibleWords = words.filter(word => !isDeleted(word.id));
   const masteredCount = visibleWords.filter(word => isMemorized(word.id)).length;
@@ -272,6 +279,12 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-lg">{word.japanese}</span>
                       <span className="text-muted-foreground">{word.romaji}</span>
+                      <button
+                        onClick={(e) => handleSpeak(e, word.japanese, `word-${word.id}`)}
+                        className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`word-${word.id}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                      >
+                        <Volume2 className="h-4 w-4" />
+                      </button>
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {word.english}
@@ -307,7 +320,15 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
                               onClick={(e) => handlePhraseClick(phrase, word.id, i, e)}
                               className="p-2 rounded bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors"
                             >
-                              <p className="font-medium">{phrase.japanese}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium flex-1">{phrase.japanese}</p>
+                                <button
+                                  onClick={(e) => handleSpeak(e, phrase.japanese, `phrase-${word.id}-${i}`)}
+                                  className={`p-1 rounded-full hover:bg-accent transition-colors ${isSpeaking(`phrase-${word.id}-${i}`) ? 'text-primary' : 'text-muted-foreground'}`}
+                                >
+                                  <Volume2 className="h-4 w-4" />
+                                </button>
+                              </div>
                               <p className="text-muted-foreground text-sm">{phrase.romaji}</p>
                               <p className="text-sm">{phrase.english}</p>
                             </div>
