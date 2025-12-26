@@ -55,20 +55,17 @@ function createWAVBlob(pcmData, sampleRate = 24000, numChannels = 1, bitsPerSamp
   return new Blob([wavBuffer], { type: "audio/wav" });
 }
 
-// Generate speech from Japanese text using Gemini TTS
-export async function generateSpeech(text) {
+// Make TTS request with retry logic
+async function makeRequest(text, retries = 2) {
   const response = await fetch(`${API_URL}?key=${API_KEY}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: "You are a Japanese language audio reader. Read the provided Japanese text aloud clearly and naturally. Do not add any extra words or commentary." }],
-      },
       contents: [
         {
-          parts: [{ text }],
+          parts: [{ text: `Say the following in Japanese: "${text}"` }],
         },
       ],
       generationConfig: {
@@ -87,9 +84,21 @@ export async function generateSpeech(text) {
   const responseText = await response.text();
 
   if (!response.ok) {
+    if (response.status === 500 && retries > 0) {
+      // Retry on server error
+      await new Promise(r => setTimeout(r, 500));
+      return makeRequest(text, retries - 1);
+    }
     console.error("Gemini TTS HTTP error:", response.status, responseText);
-    throw new Error(`TTS request failed: ${response.status} - ${responseText}`);
+    throw new Error(`TTS request failed: ${response.status}`);
   }
+
+  return responseText;
+}
+
+// Generate speech from Japanese text using Gemini TTS
+export async function generateSpeech(text) {
+  const responseText = await makeRequest(text);
 
   let data;
   try {
