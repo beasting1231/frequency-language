@@ -30,7 +30,6 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
   const longPressTriggered = useRef(false);
   const canCloseMenu = useRef(false);
   const scrollContainerRef = useRef(null);
-  const wordRefs = useRef({});
 
   // Close menu on scroll
   useEffect(() => {
@@ -47,20 +46,23 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
     return () => container.removeEventListener('scroll', handleScroll);
   }, [contextMenu.open]);
 
-  const handleContextMenu = useCallback((e, word) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const openContextMenu = useCallback((word, x, element) => {
+    canCloseMenu.current = false;
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+
+    const rect = element?.getBoundingClientRect();
     const scrollContainer = scrollContainerRef.current;
     const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+    const containerTop = scrollContainer?.getBoundingClientRect().top || 0;
 
-    canCloseMenu.current = false;
     setContextMenu({
       open: true,
       word,
-      x: e.clientX,
-      y: rect.top + scrollTop - (scrollContainer?.getBoundingClientRect().top || 0)
+      x: x,
+      y: (rect?.top || 0) + scrollTop - containerTop
     });
 
     setTimeout(() => {
@@ -68,64 +70,76 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
     }, 400);
   }, []);
 
-  const touchStartPos = useRef({ x: 0, y: 0 });
-  const touchStartElement = useRef(null);
+  const handleContextMenu = useCallback((e, word) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openContextMenu(word, e.clientX, e.currentTarget);
+  }, [openContextMenu]);
 
-  const handleTouchStart = useCallback((e, word) => {
-    const touch = e.touches[0];
-    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    // Capture element reference immediately
-    touchStartElement.current = e.currentTarget;
-    longPressTriggered.current = false;
+  // Use native touch events via ref callback
+  const setupTouchHandlers = useCallback((element, word) => {
+    if (!element) return;
 
-    longPressTimer.current = setTimeout(() => {
-      longPressTriggered.current = true;
-      canCloseMenu.current = false;
+    let timer = null;
+    let triggered = false;
+    let startX = 0;
+    let startY = 0;
 
-      if (navigator.vibrate) {
-        navigator.vibrate(50);
-      }
-
-      // Use captured element reference
-      const rect = touchStartElement.current?.getBoundingClientRect();
-      const scrollContainer = scrollContainerRef.current;
-      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
-      const containerTop = scrollContainer?.getBoundingClientRect().top || 0;
-
-      setContextMenu({
-        open: true,
-        word,
-        x: touchStartPos.current.x,
-        y: (rect?.top || touchStartPos.current.y) + scrollTop - containerTop
-      });
-
-      setTimeout(() => {
-        canCloseMenu.current = true;
-      }, 400);
-    }, 500);
-  }, []);
-
-  const handleTouchEnd = useCallback((e) => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
-    if (longPressTriggered.current) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }, []);
-
-  const handleTouchMove = useCallback((e) => {
-    if (longPressTimer.current) {
+    const onTouchStart = (e) => {
       const touch = e.touches[0];
-      const dx = Math.abs(touch.clientX - touchStartPos.current.x);
-      const dy = Math.abs(touch.clientY - touchStartPos.current.y);
-      // Only cancel if moved significantly (20px) to allow for finger wobble
-      if (dx > 20 || dy > 20) {
-        clearTimeout(longPressTimer.current);
-        longPressTimer.current = null;
+      startX = touch.clientX;
+      startY = touch.clientY;
+      triggered = false;
+      longPressTriggered.current = false;
+
+      timer = setTimeout(() => {
+        triggered = true;
+        longPressTriggered.current = true;
+        openContextMenu(word, startX, element);
+      }, 500);
+    };
+
+    const onTouchMove = (e) => {
+      if (timer) {
+        const touch = e.touches[0];
+        const dx = Math.abs(touch.clientX - startX);
+        const dy = Math.abs(touch.clientY - startY);
+        if (dx > 20 || dy > 20) {
+          clearTimeout(timer);
+          timer = null;
+        }
       }
-    }
+    };
+
+    const onTouchEnd = (e) => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (triggered) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    element.addEventListener('touchstart', onTouchStart, { passive: true });
+    element.addEventListener('touchmove', onTouchMove, { passive: true });
+    element.addEventListener('touchend', onTouchEnd, { passive: false });
+
+    // Store cleanup function
+    element._cleanupTouch = () => {
+      element.removeEventListener('touchstart', onTouchStart);
+      element.removeEventListener('touchmove', onTouchMove);
+      element.removeEventListener('touchend', onTouchEnd);
+      if (timer) clearTimeout(timer);
+    };
+  }, [openContextMenu]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup handled by ref callbacks
+    };
   }, []);
 
   const closeContextMenu = useCallback(() => {
@@ -237,16 +251,16 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
             return (
               <div
                 key={word.id}
-                data-word-item
-                ref={el => wordRefs.current[word.id] = el}
                 className={index !== visibleWords.length - 1 ? 'border-b border-border/50' : ''}
               >
                 <div
+                  ref={(el) => {
+                    if (el && !el._cleanupTouch) {
+                      setupTouchHandlers(el, word);
+                    }
+                  }}
                   onClick={() => handleWordClick(word)}
                   onContextMenu={(e) => handleContextMenu(e, word)}
-                  onTouchStart={(e) => handleTouchStart(e, word)}
-                  onTouchEnd={handleTouchEnd}
-                  onTouchMove={handleTouchMove}
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors select-none"
                 >
                   <div className="w-6 flex justify-center">
