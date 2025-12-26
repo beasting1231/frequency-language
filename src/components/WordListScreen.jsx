@@ -69,12 +69,13 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
   }, []);
 
   const touchStartPos = useRef({ x: 0, y: 0 });
-  const touchStartTime = useRef(0);
+  const touchStartElement = useRef(null);
 
   const handleTouchStart = useCallback((e, word) => {
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    touchStartTime.current = Date.now();
+    // Capture element reference immediately
+    touchStartElement.current = e.currentTarget;
     longPressTriggered.current = false;
 
     longPressTimer.current = setTimeout(() => {
@@ -85,7 +86,8 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
         navigator.vibrate(50);
       }
 
-      const rect = e.target.closest('[data-word-item]')?.getBoundingClientRect();
+      // Use captured element reference
+      const rect = touchStartElement.current?.getBoundingClientRect();
       const scrollContainer = scrollContainerRef.current;
       const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
       const containerTop = scrollContainer?.getBoundingClientRect().top || 0;
