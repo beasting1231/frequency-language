@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { words } from "@/data/words";
 import { usePhrases } from "@/hooks/usePhrases";
 import { usePhraseBreakdown } from "@/hooks/usePhraseBreakdown";
@@ -28,33 +28,78 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
   const [contextMenu, setContextMenu] = useState({ open: false, word: null, x: 0, y: 0 });
   const longPressTimer = useRef(null);
   const longPressTriggered = useRef(false);
-  const menuJustOpened = useRef(false);
+  const canCloseMenu = useRef(false);
+  const scrollContainerRef = useRef(null);
+  const wordRefs = useRef({});
+
+  // Close menu on scroll
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !contextMenu.open) return;
+
+    const handleScroll = () => {
+      if (contextMenu.open) {
+        setContextMenu({ open: false, word: null, x: 0, y: 0 });
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [contextMenu.open]);
 
   const handleContextMenu = useCallback((e, word) => {
     e.preventDefault();
     e.stopPropagation();
-    setContextMenu({ open: true, word, x: e.clientX, y: e.clientY });
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const scrollContainer = scrollContainerRef.current;
+    const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+
+    canCloseMenu.current = false;
+    setContextMenu({
+      open: true,
+      word,
+      x: e.clientX,
+      y: rect.top + scrollTop - (scrollContainer?.getBoundingClientRect().top || 0)
+    });
+
+    setTimeout(() => {
+      canCloseMenu.current = true;
+    }, 400);
   }, []);
 
   const touchStartPos = useRef({ x: 0, y: 0 });
+  const touchStartTime = useRef(0);
 
   const handleTouchStart = useCallback((e, word) => {
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    touchStartTime.current = Date.now();
     longPressTriggered.current = false;
 
     longPressTimer.current = setTimeout(() => {
       longPressTriggered.current = true;
-      menuJustOpened.current = true;
-      // Vibrate if supported
+      canCloseMenu.current = false;
+
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-      setContextMenu({ open: true, word, x: touchStartPos.current.x, y: touchStartPos.current.y });
-      // Prevent immediate close
+
+      const rect = e.target.closest('[data-word-item]')?.getBoundingClientRect();
+      const scrollContainer = scrollContainerRef.current;
+      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+      const containerTop = scrollContainer?.getBoundingClientRect().top || 0;
+
+      setContextMenu({
+        open: true,
+        word,
+        x: touchStartPos.current.x,
+        y: (rect?.top || touchStartPos.current.y) + scrollTop - containerTop
+      });
+
       setTimeout(() => {
-        menuJustOpened.current = false;
-      }, 300);
+        canCloseMenu.current = true;
+      }, 400);
     }, 500);
   }, []);
 
@@ -62,9 +107,9 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
     }
-    // Prevent click if long press was triggered
     if (longPressTriggered.current) {
       e.preventDefault();
+      e.stopPropagation();
     }
   }, []);
 
@@ -73,15 +118,15 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
       const touch = e.touches[0];
       const dx = Math.abs(touch.clientX - touchStartPos.current.x);
       const dy = Math.abs(touch.clientY - touchStartPos.current.y);
-      // Cancel if moved more than 10px
       if (dx > 10 || dy > 10) {
         clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
       }
     }
   }, []);
 
   const closeContextMenu = useCallback(() => {
-    if (menuJustOpened.current) return;
+    if (!canCloseMenu.current) return;
     setContextMenu({ open: false, word: null, x: 0, y: 0 });
   }, []);
 
@@ -113,7 +158,6 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
   };
 
   const handleWordClick = async (word) => {
-    // Don't trigger click if long press was triggered
     if (longPressTriggered.current) {
       longPressTriggered.current = false;
       return;
@@ -179,7 +223,7 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
       </header>
 
       {/* Word list */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 relative">
         <Card className="mx-auto max-w-xl">
           {visibleWords.map((word, index) => {
             const { score, mastered } = getWordStatus(word.id);
@@ -190,6 +234,8 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
             return (
               <div
                 key={word.id}
+                data-word-item
+                ref={el => wordRefs.current[word.id] = el}
                 className={index !== visibleWords.length - 1 ? 'border-b border-border/50' : ''}
               >
                 <div
@@ -198,7 +244,8 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
                   onTouchStart={(e) => handleTouchStart(e, word)}
                   onTouchEnd={handleTouchEnd}
                   onTouchMove={handleTouchMove}
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors select-none touch-manipulation"
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors select-none"
+                  style={{ touchAction: 'pan-y' }}
                 >
                   <div className="w-6 flex justify-center">
                     {mastered && (
@@ -258,7 +305,44 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
             );
           })}
         </Card>
+
+        {/* Context Menu - positioned within scroll container */}
+        {contextMenu.open && (
+          <div
+            className="absolute z-50 min-w-[160px] rounded-lg border bg-popover p-1 shadow-lg"
+            style={{
+              left: Math.min(contextMenu.x, window.innerWidth - 170),
+              top: contextMenu.y,
+            }}
+          >
+            <button
+              onTouchEnd={(e) => { e.preventDefault(); handleMarkAsMemorized(); }}
+              onClick={handleMarkAsMemorized}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+            >
+              <Check className="h-4 w-4" />
+              Mark as memorized
+            </button>
+            <button
+              onTouchEnd={(e) => { e.preventDefault(); handleDeleteWord(); }}
+              onClick={handleDeleteWord}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-500 hover:bg-accent transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete word
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Overlay to close context menu */}
+      {contextMenu.open && (
+        <div
+          className="fixed inset-0 z-40"
+          onTouchEnd={(e) => { e.preventDefault(); closeContextMenu(); }}
+          onClick={closeContextMenu}
+        />
+      )}
 
       {/* Phrase breakdown modal */}
       <Dialog open={!!selectedPhrase} onOpenChange={handleCloseBreakdown}>
@@ -324,38 +408,6 @@ export function WordListScreen({ progress, isMemorized, isDeleted, markAsMemoriz
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Context Menu */}
-      {contextMenu.open && (
-        <>
-          <div
-            className="fixed inset-0 z-50"
-            onClick={closeContextMenu}
-          />
-          <div
-            className="fixed z-50 min-w-[160px] rounded-lg border bg-popover p-1 shadow-lg"
-            style={{
-              left: Math.min(contextMenu.x, window.innerWidth - 170),
-              top: Math.min(contextMenu.y, window.innerHeight - 100),
-            }}
-          >
-            <button
-              onClick={handleMarkAsMemorized}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
-            >
-              <Check className="h-4 w-4" />
-              Mark as memorized
-            </button>
-            <button
-              onClick={handleDeleteWord}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-500 hover:bg-accent transition-colors"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete word
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 }
