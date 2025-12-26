@@ -1,0 +1,224 @@
+import { useState } from "react";
+import { words } from "@/data/words";
+import { usePhrases } from "@/hooks/usePhrases";
+import { usePhraseBreakdown } from "@/hooks/usePhraseBreakdown";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Star, Loader2, ChevronDown } from "lucide-react";
+
+export function WordListScreen({ progress, onBack }) {
+  const [expandedWord, setExpandedWord] = useState(null);
+  const [phrases, setPhrases] = useState({});
+  const [loadingWord, setLoadingWord] = useState(null);
+  const { getPhrases } = usePhrases();
+
+  // Breakdown modal state
+  const [selectedPhrase, setSelectedPhrase] = useState(null);
+  const [breakdown, setBreakdown] = useState(null);
+  const { getBreakdown, loading: breakdownLoading, error: breakdownError } = usePhraseBreakdown();
+
+  const getWordStatus = (wordId) => {
+    const wordProgress = progress[wordId];
+    if (!wordProgress) return { score: null, mastered: false };
+    return {
+      score: wordProgress.score,
+      mastered: wordProgress.score >= 8,
+    };
+  };
+
+  const handleWordClick = async (word) => {
+    if (expandedWord === word.id) {
+      setExpandedWord(null);
+      return;
+    }
+
+    setExpandedWord(word.id);
+
+    if (!phrases[word.id]) {
+      setLoadingWord(word.id);
+      const result = await getPhrases(word);
+      if (result) {
+        setPhrases(prev => ({ ...prev, [word.id]: result }));
+      }
+      setLoadingWord(null);
+    }
+  };
+
+  const handlePhraseClick = async (phrase, wordId, phraseIndex, e) => {
+    e.stopPropagation();
+    setSelectedPhrase(phrase);
+    setBreakdown(null);
+    const result = await getBreakdown(phrase, wordId, phraseIndex);
+    if (result) {
+      setBreakdown(result);
+    }
+  };
+
+  const handleCloseBreakdown = () => {
+    setSelectedPhrase(null);
+    setBreakdown(null);
+  };
+
+  const masteredCount = Object.values(progress).filter(p => p.score >= 8).length;
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      {/* Header */}
+      <header className="flex items-center gap-2 border-b px-4 py-3">
+        <Button variant="ghost" size="icon" onClick={onBack}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="font-semibold">Word List</h1>
+          <p className="text-sm text-muted-foreground">
+            {masteredCount} / {words.length} mastered
+          </p>
+        </div>
+      </header>
+
+      {/* Word list */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <Card className="mx-auto max-w-xl">
+          {words.map((word, index) => {
+            const { score, mastered } = getWordStatus(word.id);
+            const isExpanded = expandedWord === word.id;
+            const isLoading = loadingWord === word.id;
+            const wordPhrases = phrases[word.id];
+
+            return (
+              <div
+                key={word.id}
+                className={index !== words.length - 1 ? 'border-b border-border/50' : ''}
+              >
+                <div
+                  onClick={() => handleWordClick(word)}
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                >
+                  <div className="w-6 flex justify-center">
+                    {mastered && (
+                      <Star className="h-4 w-4 fill-primary text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-lg">{word.japanese}</span>
+                      <span className="text-muted-foreground">{word.romaji}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {word.english}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {score !== null && (
+                      <span className={`text-sm font-medium ${mastered ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {score.toFixed(1)}
+                      </span>
+                    )}
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="px-4 pb-4 pt-1">
+                    <div className="ml-6 pl-3 border-l-2 border-primary/30">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Example Phrases</p>
+
+                      {isLoading && (
+                        <div className="flex items-center gap-2 py-4">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Generating...</span>
+                        </div>
+                      )}
+
+                      {!isLoading && wordPhrases && (
+                        <div className="space-y-2">
+                          {wordPhrases.map((phrase, i) => (
+                            <div
+                              key={i}
+                              onClick={(e) => handlePhraseClick(phrase, word.id, i, e)}
+                              className="p-2 rounded bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors"
+                            >
+                              <p className="font-medium">{phrase.japanese}</p>
+                              <p className="text-muted-foreground text-sm">{phrase.romaji}</p>
+                              <p className="text-sm">{phrase.english}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </Card>
+      </div>
+
+      {/* Phrase breakdown modal */}
+      <Dialog open={!!selectedPhrase} onOpenChange={handleCloseBreakdown}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          {selectedPhrase && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold">
+                  {selectedPhrase.japanese}
+                </DialogTitle>
+                <p className="text-muted-foreground">{selectedPhrase.romaji}</p>
+                <p className="text-primary">{selectedPhrase.english}</p>
+              </DialogHeader>
+
+              <div className="mt-4">
+                {breakdownLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Analyzing sentence...</span>
+                  </div>
+                )}
+
+                {!breakdownLoading && breakdownError && (
+                  <div className="py-4 text-center">
+                    <p className="text-red-500 text-sm">Failed to load breakdown.</p>
+                    <p className="text-muted-foreground text-xs mt-1">Check Firestore rules include "breakdowns" collection.</p>
+                  </div>
+                )}
+
+                {!breakdownLoading && !breakdownError && breakdown && breakdown.words && (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-2">Word by Word</h3>
+                      <div className="space-y-2">
+                        {breakdown.words.map((word, i) => (
+                          <div key={i} className="p-3 rounded-lg bg-accent/30">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-lg font-bold">{word.japanese}</span>
+                              <span className="text-muted-foreground text-sm">{word.romaji}</span>
+                            </div>
+                            <p className="text-primary text-sm">{word.meaning}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{word.role}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {breakdown.explanation && (
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-2">How it works</h3>
+                        <p className="text-sm leading-relaxed">{breakdown.explanation}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
